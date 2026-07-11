@@ -3,19 +3,14 @@ import { createPortal } from 'react-dom'
 
 import { Button } from '@renderer/components/index'
 import { createLogger } from '@renderer/logger'
-import {
-  type AIShortcut,
-  type CatStyle,
-  DEFAULT_SPEED_THRESHOLDS,
-  type SpeedThresholds,
-} from '@shared/types'
+import { type AIShortcut, type CatStyle } from '@shared/types'
 
 import * as s from './Settings.css'
+import { useSettingsStore } from './useSettingsStore'
 
 const log = createLogger('settings')
 
 const SMOOTHING_OPTIONS = [1, 2, 3, 5, 8]
-const SAVE_DEBOUNCE_MS = 300
 
 type TooltipPlacement = 'top' | 'right'
 
@@ -146,19 +141,8 @@ const CAT_STYLE_LABELS: Record<CatStyle, { name: string; desc: string }> = {
 }
 
 function CatStyleForm(): JSX.Element {
-  const [selected, setSelected] = useState<CatStyle>('cat')
-
-  useEffect(() => {
-    window.catStyle
-      .get()
-      .then(setSelected)
-      .catch((err) => log.error('failed to load cat style', err))
-  }, [])
-
-  function handleChange(style: CatStyle): void {
-    setSelected(style)
-    window.catStyle.set(style).catch((err) => log.error('failed to save cat style', err))
-  }
+  const selected = useSettingsStore((state) => state.catStyle)
+  const setCatStyle = useSettingsStore((state) => state.setCatStyle)
 
   return (
     <div className={s.section}>
@@ -171,7 +155,7 @@ function CatStyleForm(): JSX.Element {
             <button
               key={style}
               className={isActive ? s.styleOptionActive : s.styleOption}
-              onClick={() => handleChange(style)}
+              onClick={() => void setCatStyle(style)}
             >
               <p className={s.styleOptionName}>{name}</p>
               <p className={s.styleOptionDesc}>{desc}</p>
@@ -184,45 +168,21 @@ function CatStyleForm(): JSX.Element {
 }
 
 function ThresholdsForm(): JSX.Element {
-  const [thresholds, setThresholds] = useState<SpeedThresholds>(DEFAULT_SPEED_THRESHOLDS)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    window.thresholds
-      .get()
-      .then(setThresholds)
-      .catch((err) => log.error('failed to load thresholds', err))
-
-    return () => {
-      if (saveTimer.current !== null) clearTimeout(saveTimer.current)
-    }
-  }, [])
-
-  function scheduleSave(next: SpeedThresholds): void {
-    if (saveTimer.current !== null) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      window.thresholds.set(next).catch((err) => log.error('failed to save thresholds', err))
-    }, SAVE_DEBOUNCE_MS)
-  }
+  const thresholds = useSettingsStore((state) => state.thresholds)
+  const setThresholds = useSettingsStore((state) => state.setThresholds)
 
   function handleSlowChange(raw: number): void {
     const slow = Math.min(raw, thresholds.mid - 1)
-    const next = { ...thresholds, slow }
-    setThresholds(next)
-    scheduleSave(next)
+    setThresholds({ ...thresholds, slow })
   }
 
   function handleMidChange(raw: number): void {
     const mid = Math.max(raw, thresholds.slow + 1)
-    const next = { ...thresholds, mid }
-    setThresholds(next)
-    scheduleSave(next)
+    setThresholds({ ...thresholds, mid })
   }
 
   function handleSmoothingChange(smoothingTicks: number): void {
-    const next = { ...thresholds, smoothingTicks }
-    setThresholds(next)
-    scheduleSave(next)
+    setThresholds({ ...thresholds, smoothingTicks })
   }
 
   return (
@@ -287,17 +247,18 @@ function ThresholdsForm(): JSX.Element {
 }
 
 export function Settings(): JSX.Element {
-  const [shortcuts, setShortcuts] = useState<AIShortcut[]>([])
+  const shortcuts = useSettingsStore((state) => state.shortcuts)
+  const saveShortcut = useSettingsStore((state) => state.saveShortcut)
+  const deleteShortcut = useSettingsStore((state) => state.deleteShortcut)
+  const load = useSettingsStore((state) => state.load)
+
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftState>({ id: '', name: '', command: '' })
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    window.aiShortcut
-      .list()
-      .then(setShortcuts)
-      .catch((err) => log.error('failed to load shortcuts', err))
-  }, [])
+    void load()
+  }, [load])
 
   function startAdd(): void {
     setEditingId('')
@@ -321,8 +282,7 @@ export function Settings(): JSX.Element {
         name: draft.name.trim(),
         command: draft.command.trim(),
       }
-      await window.aiShortcut.save(shortcut)
-      setShortcuts(await window.aiShortcut.list())
+      await saveShortcut(shortcut)
       setEditingId(null)
     } catch (err) {
       log.error('failed to save shortcut', err)
@@ -332,8 +292,7 @@ export function Settings(): JSX.Element {
   }
 
   async function handleDelete(id: string): Promise<void> {
-    await window.aiShortcut.delete(id)
-    setShortcuts((prev) => prev.filter((s) => s.id !== id))
+    await deleteShortcut(id)
   }
 
   return (
