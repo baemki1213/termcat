@@ -6,7 +6,7 @@
   "bin": {
     "termcat": "./out/main/cli/index.js"
   },
-  "homepage": "https://github.com/f-lab-edu/termcat",
+  "homepage": "https://github.com/baemki1213/termcat",
   "author": "baemki1213",
   "license": "MIT",
   "scripts": {
