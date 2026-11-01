@@ -2,11 +2,17 @@ import { ipcMain } from 'electron'
 
 import { store } from '@main/store'
 import { rebuildTrayMenu } from '@main/tray-menu'
-import type { AIShortcut, CatStyle, SpeedThresholds } from '@shared/types'
+import type { AIShortcut, CatStyle, MultiSessionDisplay, SpeedThresholds } from '@shared/types'
 
 import { closeSettingsWindow } from './window'
 
-export function registerSettingsIpcHandlers(onCatStyleChange: (style: CatStyle) => void): void {
+export interface SettingsChangeCallbacks {
+  onCatStyleChange: (style: CatStyle) => void
+  onMultiSessionDisplayChange: (display: MultiSessionDisplay) => void
+  onSessionColorsChange: (enabled: boolean) => void
+}
+
+export function registerSettingsIpcHandlers(callbacks: SettingsChangeCallbacks): void {
   ipcMain.handle('ai-shortcut:list', () => store.get('aiShortcuts'))
 
   ipcMain.handle('ai-shortcut:save', (_, shortcut: AIShortcut) => {
@@ -43,6 +49,20 @@ export function registerSettingsIpcHandlers(onCatStyleChange: (style: CatStyle) 
 
   ipcMain.handle('cat-style:set', (_, style: CatStyle) => {
     store.set('catStyle', style)
-    onCatStyleChange(style)
+    callbacks.onCatStyleChange(style)
+  })
+
+  ipcMain.handle('multi-session-display:get', () => store.get('multiSessionDisplay'))
+
+  ipcMain.handle('multi-session-display:set', (_, display: MultiSessionDisplay) => {
+    store.set('multiSessionDisplay', display)
+    callbacks.onMultiSessionDisplayChange(display)
+  })
+
+  ipcMain.handle('session-colors:get', () => store.get('sessionColors'))
+
+  ipcMain.handle('session-colors:set', (_, enabled: boolean) => {
+    store.set('sessionColors', enabled)
+    callbacks.onSessionColorsChange(enabled)
   })
 }

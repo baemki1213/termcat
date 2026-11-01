@@ -14,10 +14,21 @@ vi.mock('@main/store', () => ({ store: storeMock }))
 vi.mock('@main/tray-menu', () => ({ rebuildTrayMenu }))
 vi.mock('@main/settings/window', () => ({ closeSettingsWindow }))
 
-import { registerSettingsIpcHandlers } from '@main/settings/ipc-handlers'
+import {
+  registerSettingsIpcHandlers,
+  type SettingsChangeCallbacks,
+} from '@main/settings/ipc-handlers'
 import type { AIShortcut, SpeedThresholds } from '@shared/types'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
+
+function noopCallbacks(): SettingsChangeCallbacks {
+  return {
+    onCatStyleChange: vi.fn(),
+    onMultiSessionDisplayChange: vi.fn(),
+    onSessionColorsChange: vi.fn(),
+  }
+}
 
 function getHandler(channel: string): Handler {
   const call = vi.mocked(ipcMain.handle).mock.calls.find((c) => c[0] === channel)
@@ -31,8 +42,8 @@ describe('registerSettingsIpcHandlers', () => {
   })
 
   describe('channel registration', () => {
-    it('registers all 8 settings channels exactly once', () => {
-      registerSettingsIpcHandlers(vi.fn())
+    it('registers all 12 settings channels exactly once', () => {
+      registerSettingsIpcHandlers(noopCallbacks())
       const channels = vi.mocked(ipcMain.handle).mock.calls.map((c) => c[0])
       expect(channels.sort()).toEqual(
         [
@@ -44,6 +55,10 @@ describe('registerSettingsIpcHandlers', () => {
           'thresholds:set',
           'cat-style:get',
           'cat-style:set',
+          'multi-session-display:get',
+          'multi-session-display:set',
+          'session-colors:get',
+          'session-colors:set',
         ].sort()
       )
     })
@@ -53,7 +68,7 @@ describe('registerSettingsIpcHandlers', () => {
     it('returns shortcuts from store', () => {
       const shortcuts: AIShortcut[] = [{ id: 'a', name: 'Claude', command: 'claude' }]
       storeMock.get.mockReturnValue(shortcuts)
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       expect(getHandler('ai-shortcut:list')(null)).toEqual(shortcuts)
       expect(storeMock.get).toHaveBeenCalledWith('aiShortcuts')
     })
@@ -63,7 +78,7 @@ describe('registerSettingsIpcHandlers', () => {
     it('appends a new shortcut when its id is not present', () => {
       const existing: AIShortcut[] = [{ id: 'a', name: 'A', command: 'a' }]
       storeMock.get.mockReturnValue(existing)
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       const newShortcut: AIShortcut = { id: 'b', name: 'B', command: 'b' }
       getHandler('ai-shortcut:save')(null, newShortcut)
       expect(storeMock.set).toHaveBeenCalledWith('aiShortcuts', [
@@ -78,7 +93,7 @@ describe('registerSettingsIpcHandlers', () => {
         { id: 'b', name: 'B', command: 'b' },
       ]
       storeMock.get.mockReturnValue(existing)
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       const updated: AIShortcut = { id: 'a', name: 'A2', command: 'a2' }
       getHandler('ai-shortcut:save')(null, updated)
       expect(storeMock.set).toHaveBeenCalledWith('aiShortcuts', [
@@ -89,7 +104,7 @@ describe('registerSettingsIpcHandlers', () => {
 
     it('rebuilds the tray menu after save', () => {
       storeMock.get.mockReturnValue([])
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       getHandler('ai-shortcut:save')(null, { id: 'a', name: 'A', command: 'a' })
       expect(rebuildTrayMenu).toHaveBeenCalledOnce()
     })
@@ -101,7 +116,7 @@ describe('registerSettingsIpcHandlers', () => {
         { id: 'a', name: 'A', command: 'a' },
         { id: 'b', name: 'B', command: 'b' },
       ])
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       getHandler('ai-shortcut:delete')(null, 'a')
       expect(storeMock.set).toHaveBeenCalledWith('aiShortcuts', [
         { id: 'b', name: 'B', command: 'b' },
@@ -111,14 +126,14 @@ describe('registerSettingsIpcHandlers', () => {
     it('leaves the list unchanged when id is not found', () => {
       const existing: AIShortcut[] = [{ id: 'a', name: 'A', command: 'a' }]
       storeMock.get.mockReturnValue(existing)
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       getHandler('ai-shortcut:delete')(null, 'nonexistent')
       expect(storeMock.set).toHaveBeenCalledWith('aiShortcuts', existing)
     })
 
     it('rebuilds the tray menu even when nothing was deleted', () => {
       storeMock.get.mockReturnValue([])
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       getHandler('ai-shortcut:delete')(null, 'unknown')
       expect(rebuildTrayMenu).toHaveBeenCalledOnce()
     })
@@ -128,13 +143,13 @@ describe('registerSettingsIpcHandlers', () => {
     it('thresholds:get returns the persisted value', () => {
       const thresholds: SpeedThresholds = { slow: 30, mid: 150, smoothingTicks: 5 }
       storeMock.get.mockReturnValue(thresholds)
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       expect(getHandler('thresholds:get')(null)).toEqual(thresholds)
       expect(storeMock.get).toHaveBeenCalledWith('thresholds')
     })
 
     it('thresholds:set persists the new value', () => {
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       const next: SpeedThresholds = { slow: 50, mid: 200, smoothingTicks: 4 }
       getHandler('thresholds:set')(null, next)
       expect(storeMock.set).toHaveBeenCalledWith('thresholds', next)
@@ -144,14 +159,14 @@ describe('registerSettingsIpcHandlers', () => {
   describe('cat-style', () => {
     it('cat-style:get returns the persisted style', () => {
       storeMock.get.mockReturnValue('cat2')
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       expect(getHandler('cat-style:get')(null)).toBe('cat2')
       expect(storeMock.get).toHaveBeenCalledWith('catStyle')
     })
 
     it('cat-style:set persists the style and notifies the callback', () => {
       const onChange = vi.fn()
-      registerSettingsIpcHandlers(onChange)
+      registerSettingsIpcHandlers({ ...noopCallbacks(), onCatStyleChange: onChange })
       getHandler('cat-style:set')(null, 'cat2')
       expect(storeMock.set).toHaveBeenCalledWith('catStyle', 'cat2')
       expect(onChange).toHaveBeenCalledWith('cat2')
@@ -159,7 +174,7 @@ describe('registerSettingsIpcHandlers', () => {
 
     it('cat-style:set notifies once per call', () => {
       const onChange = vi.fn()
-      registerSettingsIpcHandlers(onChange)
+      registerSettingsIpcHandlers({ ...noopCallbacks(), onCatStyleChange: onChange })
       const handler = getHandler('cat-style:set')
       handler(null, 'cat')
       handler(null, 'cat2')
@@ -169,9 +184,43 @@ describe('registerSettingsIpcHandlers', () => {
     })
   })
 
+  describe('multi-session-display', () => {
+    it('multi-session-display:get returns the persisted mode', () => {
+      storeMock.get.mockReturnValue('single')
+      registerSettingsIpcHandlers(noopCallbacks())
+      expect(getHandler('multi-session-display:get')(null)).toBe('single')
+      expect(storeMock.get).toHaveBeenCalledWith('multiSessionDisplay')
+    })
+
+    it('multi-session-display:set persists the mode and notifies the callback', () => {
+      const onChange = vi.fn()
+      registerSettingsIpcHandlers({ ...noopCallbacks(), onMultiSessionDisplayChange: onChange })
+      getHandler('multi-session-display:set')(null, 'single')
+      expect(storeMock.set).toHaveBeenCalledWith('multiSessionDisplay', 'single')
+      expect(onChange).toHaveBeenCalledWith('single')
+    })
+  })
+
+  describe('session-colors', () => {
+    it('session-colors:get returns the persisted flag', () => {
+      storeMock.get.mockReturnValue(true)
+      registerSettingsIpcHandlers(noopCallbacks())
+      expect(getHandler('session-colors:get')(null)).toBe(true)
+      expect(storeMock.get).toHaveBeenCalledWith('sessionColors')
+    })
+
+    it('session-colors:set persists the flag and notifies the callback', () => {
+      const onChange = vi.fn()
+      registerSettingsIpcHandlers({ ...noopCallbacks(), onSessionColorsChange: onChange })
+      getHandler('session-colors:set')(null, true)
+      expect(storeMock.set).toHaveBeenCalledWith('sessionColors', true)
+      expect(onChange).toHaveBeenCalledWith(true)
+    })
+  })
+
   describe('settings:close', () => {
     it('invokes closeSettingsWindow', () => {
-      registerSettingsIpcHandlers(vi.fn())
+      registerSettingsIpcHandlers(noopCallbacks())
       getHandler('settings:close')(null)
       expect(closeSettingsWindow).toHaveBeenCalledOnce()
     })

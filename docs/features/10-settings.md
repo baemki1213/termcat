@@ -13,7 +13,9 @@
 | `thresholds.slow` | number | 10 | slow → mid 전환 chars/sec |
 | `thresholds.mid` | number | 80 | mid → fast 전환 chars/sec |
 | `thresholds.smoothingTicks` | number | 3 | 레벨 전환 스무딩 tick 수 |
-| `cat.color` | string | `'default'` | 고양이 색상 테마 |
+| `catStyle` | `'cat' \| 'cat2' \| 'runner'` | `'cat'` | 고양이 스프라이트 스타일 |
+| `multiSessionDisplay` | `'multi' \| 'single'` | `'multi'` | 여러 세션일 때 고양이를 세션마다 / 한 마리로 표시 |
+| `sessionColors` | boolean | false | 세션(슬롯)마다 다른 색으로 고양이 칠하기 |
 | `openAtLogin` | boolean | true | 로그인 시 자동 시작 |
 | `onboardingDone` | boolean | false | 온보딩 완료 여부 |
 
@@ -46,7 +48,9 @@ const store = new Store<AppSettings>({
 |------|---------|
 | 속도 임계값 | 슬라이더 (slow: 1~50, mid: 20~200) |
 | 스무딩 tick | 드롭다운 (1 / 3 / 5) |
-| 고양이 색상 | 색상 버튼 그룹 |
+| 고양이 스타일 | 버튼 그룹 (픽셀 / 타이핑 / 달리기) |
+| 여러 세션 표시 | 버튼 그룹 (세션마다 한 마리 / 한 마리로 합치기) |
+| 세션별 색 구분 | 버튼 그룹 (끄기 / 켜기) |
 
 ---
 
