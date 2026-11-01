@@ -1,7 +1,13 @@
 import { electronAPI } from '@electron-toolkit/preload'
 import { contextBridge, ipcRenderer } from 'electron'
 
-import type { AIShortcut, CatStyle, PopupState, SpeedThresholds } from '@shared/types'
+import type {
+  AIShortcut,
+  CatStyle,
+  MultiSessionDisplay,
+  PopupState,
+  SpeedThresholds,
+} from '@shared/types'
 
 const onboardingAPI = {
   apply: (): Promise<string> => ipcRenderer.invoke('onboarding:apply'),
@@ -32,6 +38,17 @@ const catStyleAPI = {
   set: (style: CatStyle): Promise<void> => ipcRenderer.invoke('cat-style:set', style),
 }
 
+const multiSessionDisplayAPI = {
+  get: (): Promise<MultiSessionDisplay> => ipcRenderer.invoke('multi-session-display:get'),
+  set: (display: MultiSessionDisplay): Promise<void> =>
+    ipcRenderer.invoke('multi-session-display:set', display),
+}
+
+const sessionColorsAPI = {
+  get: (): Promise<boolean> => ipcRenderer.invoke('session-colors:get'),
+  set: (enabled: boolean): Promise<void> => ipcRenderer.invoke('session-colors:set', enabled),
+}
+
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
@@ -40,6 +57,8 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('thresholds', thresholdsAPI)
     contextBridge.exposeInMainWorld('popup', popupAPI)
     contextBridge.exposeInMainWorld('catStyle', catStyleAPI)
+    contextBridge.exposeInMainWorld('multiSessionDisplay', multiSessionDisplayAPI)
+    contextBridge.exposeInMainWorld('sessionColors', sessionColorsAPI)
   } catch (error) {
     console.error(error) // eslint-disable-line no-console
   }
@@ -56,4 +75,8 @@ if (process.contextIsolated) {
   window.popup = popupAPI
   // @ts-expect-error non-isolated fallback
   window.catStyle = catStyleAPI
+  // @ts-expect-error non-isolated fallback
+  window.multiSessionDisplay = multiSessionDisplayAPI
+  // @ts-expect-error non-isolated fallback
+  window.sessionColors = sessionColorsAPI
 }

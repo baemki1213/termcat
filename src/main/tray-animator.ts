@@ -2,6 +2,7 @@ import type { Tray } from 'electron'
 import { nativeImage } from 'electron'
 import { join } from 'path'
 
+import { tintImage } from '@main/sprite-tint'
 import type { CatStyle, SpeedLevel } from '@shared/types'
 
 const IDLE_INTERVAL = 800
@@ -43,27 +44,40 @@ const CAT_STYLE_CONFIGS: Record<CatStyle, CatStyleConfig> = {
     ],
     useTemplate: false,
   },
+  runner: {
+    prefix: 'runner',
+    frameCount: 8,
+    idleFrames: [0],
+    spinIntroFrames: Array.from({ length: 8 }, (_, i) => i),
+    spinLoopFrames: Array.from({ length: 8 }, (_, i) => i),
+    useTemplate: true,
+  },
 }
 
-function loadFrames(
-  spritesDir: string,
-  prefix: string,
-  count: number,
-  useTemplate: boolean
-): Electron.NativeImage[] {
-  return Array.from({ length: count }, (_, i) => {
-    const frameName = `${prefix}-f${String(i + 1).padStart(2, '0')}.png`
+/**
+ * tint 가 주어지면 색을 입힌 비템플릿 이미지를 만든다 (템플릿 이미지는 메뉴바 색을 따라가므로 색을 못 입힘).
+ * 실루엣(useTemplate) 스프라이트는 단색 채우기, 사진형 스프라이트는 duotone 으로 칠한다.
+ */
+function loadFrames(spritesDir: string, config: CatStyleConfig, tint: string | null) {
+  return Array.from({ length: config.frameCount }, (_, i) => {
+    const frameName = `${config.prefix}-f${String(i + 1).padStart(2, '0')}.png`
     const img = nativeImage.createFromPath(join(spritesDir, frameName))
-    if (useTemplate) img.setTemplateImage(true)
+    if (tint !== null) return tintImage(img, tint, config.useTemplate ? 'fill' : 'duotone')
+    if (config.useTemplate) img.setTemplateImage(true)
     return img
   })
 }
 
 export type TrayAnimator = ReturnType<typeof createTrayAnimator>
 
-export function createTrayAnimator(tray: Tray, spritesDir: string, style: CatStyle = 'cat') {
+export function createTrayAnimator(
+  tray: Tray,
+  spritesDir: string,
+  style: CatStyle = 'cat',
+  tint: string | null = null
+) {
   const config = CAT_STYLE_CONFIGS[style]
-  const frames = loadFrames(spritesDir, config.prefix, config.frameCount, config.useTemplate)
+  const frames = loadFrames(spritesDir, config, tint)
   let idleIndex = 0
   let timer: NodeJS.Timeout | null = null
 

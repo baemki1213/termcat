@@ -3,15 +3,15 @@ import { app, nativeImage, Tray } from 'electron'
 import { join } from 'path'
 
 import { createIpcServer } from '@main/ipc-server'
+import { createMultiTrayManager } from '@main/multi-tray-manager'
 import { hasAlias, openOnboardingWindow } from '@main/onboarding'
 import { registerPopupIpcHandlers } from '@main/popup/ipc-handlers'
 import { togglePopup } from '@main/popup/window'
 import { createSessionManager } from '@main/session-manager'
 import { registerSettingsIpcHandlers } from '@main/settings'
 import { store } from '@main/store'
-import { createTrayAnimator } from '@main/tray-animator'
 import { getContextMenu } from '@main/tray-menu'
-import type { CatStyle, SpeedLevel } from '@shared/types'
+import type { CatStyle, MultiSessionDisplay } from '@shared/types'
 
 const TICK_MS = 100
 
@@ -33,11 +33,21 @@ function createTray(): Tray {
   return tray
 }
 
-function startCore(tray: Tray): { stop: () => void; setStyle: (style: CatStyle) => void } {
+interface Core {
+  stop: () => void
+  setStyle: (style: CatStyle) => void
+  setDisplay: (display: MultiSessionDisplay) => void
+  setSessionColors: (enabled: boolean) => void
+}
+
+function startCore(): Core {
   const sessionManager = createSessionManager(() => store.get('thresholds'))
-  let animator = createTrayAnimator(tray, getSpritesDir(), store.get('catStyle'))
-  animator.setLevel('idle')
-  let currentLevel: SpeedLevel = 'idle'
+  const trayManager = createMultiTrayManager(createTray, getSpritesDir(), {
+    style: store.get('catStyle'),
+    display: store.get('multiSessionDisplay'),
+    sessionColors: store.get('sessionColors'),
+  })
+  trayManager.update([])
 
   const ipcServer = createIpcServer((event) => {
     if (event.type === 'session:start') {
@@ -55,24 +65,18 @@ function startCore(tray: Tray): { stop: () => void; setStyle: (style: CatStyle) 
   ipcServer.start()
 
   const tickerId = setInterval(() => {
-    const newLevel = sessionManager.tick()
-    if (newLevel !== currentLevel) {
-      currentLevel = newLevel
-      animator.setLevel(newLevel)
-    }
+    trayManager.update(sessionManager.tick())
   }, TICK_MS)
 
   return {
     stop: () => {
       clearInterval(tickerId)
       ipcServer.stop()
-      animator.destroy()
+      trayManager.destroy()
     },
-    setStyle: (style: CatStyle) => {
-      animator.destroy()
-      animator = createTrayAnimator(tray, getSpritesDir(), style)
-      animator.setLevel(currentLevel)
-    },
+    setStyle: (style: CatStyle) => trayManager.setStyle(style),
+    setDisplay: (display: MultiSessionDisplay) => trayManager.setDisplay(display),
+    setSessionColors: (enabled: boolean) => trayManager.setSessionColors(enabled),
   }
 }
 
@@ -87,10 +91,13 @@ app.whenReady().then(() => {
     app.dock.hide()
   }
 
-  const tray = createTray()
-  const { stop, setStyle } = startCore(tray)
+  const { stop, setStyle, setDisplay, setSessionColors } = startCore()
 
-  registerSettingsIpcHandlers(setStyle)
+  registerSettingsIpcHandlers({
+    onCatStyleChange: setStyle,
+    onMultiSessionDisplayChange: setDisplay,
+    onSessionColorsChange: setSessionColors,
+  })
 
   app.on('before-quit', stop)
 

@@ -4,7 +4,10 @@ export type ClaudeModel =
   | 'claude-haiku-4-5-20251001'
   | (string & {})
 
-export type CatStyle = 'cat' | 'cat2'
+export type CatStyle = 'cat' | 'cat2' | 'runner'
+
+/** 세션이 여러 개일 때 고양이를 세션마다 한 마리씩 보여줄지, 가장 빠른 속도 한 마리로 합칠지 */
+export type MultiSessionDisplay = 'multi' | 'single'
 
 export type IpcChannel =
   | 'onboarding:apply'
@@ -18,6 +21,10 @@ export type IpcChannel =
   | 'thresholds:set'
   | 'cat-style:get'
   | 'cat-style:set'
+  | 'multi-session-display:get'
+  | 'multi-session-display:set'
+  | 'session-colors:get'
+  | 'session-colors:set'
   | 'popup:get-sessions'
   | 'popup:quit'
 
@@ -28,6 +35,11 @@ export interface AIShortcut {
 }
 
 export type SpeedLevel = 'idle' | 'slow' | 'mid' | 'fast'
+
+export interface SessionLevel {
+  pid: number
+  level: SpeedLevel
+}
 
 export interface TokenStats {
   model: ClaudeModel | null

@@ -1,6 +1,12 @@
 import type { ElectronAPI } from '@electron-toolkit/preload'
 
-import type { AIShortcut, CatStyle, PopupState, SpeedThresholds } from '@shared/types'
+import type {
+  AIShortcut,
+  CatStyle,
+  MultiSessionDisplay,
+  PopupState,
+  SpeedThresholds,
+} from '@shared/types'
 
 declare global {
   interface Window {
@@ -27,6 +33,14 @@ declare global {
     catStyle: {
       get: () => Promise<CatStyle>
       set: (style: CatStyle) => Promise<void>
+    }
+    multiSessionDisplay: {
+      get: () => Promise<MultiSessionDisplay>
+      set: (display: MultiSessionDisplay) => Promise<void>
+    }
+    sessionColors: {
+      get: () => Promise<boolean>
+      set: (enabled: boolean) => Promise<void>
     }
   }
 }

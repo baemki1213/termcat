@@ -95,6 +95,28 @@ class TrayAnimator {
 
 ---
 
+## 고양이 스타일
+
+| 스타일 | 프레임 | 템플릿 | 설명 |
+|--------|--------|--------|------|
+| `cat` | 8 | O | 정면 실루엣, 회전 |
+| `cat2` | 67 | X | 실사 풍 타이핑 고양이 (컬러) |
+| `runner` | 8 | O | 옆모습 달리기 실루엣 (런캣 스타일), `runner-f01..08.png` |
+
+## 세션별 색 (tint)
+
+설정 `sessionColors` 가 켜지면 슬롯마다 `SESSION_PALETTE` 색을 받아 `createTrayAnimator(tray, dir, style, tint)` 로 프레임을 색칠한다.
+템플릿 이미지는 메뉴바 색을 따라가므로, 색을 입힌 프레임은 템플릿 표시를 하지 않는다.
+
+| 스프라이트 | 방식 |
+|-----------|------|
+| 실루엣 (`cat`, `runner`) | `fill` — 불투명 픽셀을 색으로 채움 |
+| 사진형 (`cat2`) | `duotone` — 밝기를 유지하고 검정→색→흰색으로 재색칠 |
+
+구현: `src/main/sprite-tint.ts` (`tintBgra` 순수 함수 + `tintImage`).
+
+---
+
 ## 완료 조건
 
 - [ ] 8프레임 스프라이트가 메뉴바에 정상 표시됨
@@ -109,6 +131,7 @@ class TrayAnimator {
 
 | 파일 | 설명 |
 |------|------|
-| `src/main/tray-animator.ts` | TrayAnimator 클래스 |
+| `src/main/tray-animator.ts` | TrayAnimator 클래스, 스타일별 프레임 설정 |
+| `src/main/sprite-tint.ts` | 세션별 색 입히기 |
 | `resources/sprites/` | PNG 스프라이트 에셋 |
 | `src/shared/types.ts` | `SpeedLevel` 타입 |

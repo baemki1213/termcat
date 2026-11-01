@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { Button } from '@renderer/components/index'
 import { createLogger } from '@renderer/logger'
-import { type AIShortcut, type CatStyle } from '@shared/types'
+import { type AIShortcut, type CatStyle, type MultiSessionDisplay } from '@shared/types'
 
 import * as s from './Settings.css'
 import { useSettingsStore } from './useSettingsStore'
@@ -138,6 +138,7 @@ function ShortcutForm({
 const CAT_STYLE_LABELS: Record<CatStyle, { name: string; desc: string }> = {
   cat: { name: '픽셀 고양이', desc: '기본 스프라이트' },
   cat2: { name: '타이핑 고양이', desc: '실사 스타일, 67프레임' },
+  runner: { name: '달리는 고양이', desc: '옆모습 8프레임, 런캣 스타일' },
 }
 
 function CatStyleForm(): JSX.Element {
@@ -156,6 +157,69 @@ function CatStyleForm(): JSX.Element {
               key={style}
               className={isActive ? s.styleOptionActive : s.styleOption}
               onClick={() => void setCatStyle(style)}
+            >
+              <p className={s.styleOptionName}>{name}</p>
+              <p className={s.styleOptionDesc}>{desc}</p>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const MULTI_SESSION_DISPLAY_LABELS: Record<MultiSessionDisplay, { name: string; desc: string }> = {
+  multi: { name: '세션마다 한 마리', desc: '세션 수만큼 고양이가 각자 속도로 회전' },
+  single: { name: '한 마리로 합치기', desc: '가장 빠른 세션 속도로 한 마리만 표시' },
+}
+
+function MultiSessionDisplayForm(): JSX.Element {
+  const selected = useSettingsStore((state) => state.multiSessionDisplay)
+  const setDisplay = useSettingsStore((state) => state.setMultiSessionDisplay)
+
+  return (
+    <div className={s.section}>
+      <p className={s.sectionTitle}>여러 세션 표시</p>
+      <div className={s.styleOptions}>
+        {(Object.keys(MULTI_SESSION_DISPLAY_LABELS) as MultiSessionDisplay[]).map((display) => {
+          const { name, desc } = MULTI_SESSION_DISPLAY_LABELS[display]
+          const isActive = selected === display
+          return (
+            <button
+              key={display}
+              className={isActive ? s.styleOptionActive : s.styleOption}
+              onClick={() => void setDisplay(display)}
+            >
+              <p className={s.styleOptionName}>{name}</p>
+              <p className={s.styleOptionDesc}>{desc}</p>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const SESSION_COLORS_LABELS: Array<{ value: boolean; name: string; desc: string }> = [
+  { value: false, name: '끄기', desc: '메뉴바 색을 따라가는 기본 색' },
+  { value: true, name: '켜기', desc: '세션마다 주황·파랑·초록·분홍 순으로 구분' },
+]
+
+function SessionColorsForm(): JSX.Element {
+  const enabled = useSettingsStore((state) => state.sessionColors)
+  const setSessionColors = useSettingsStore((state) => state.setSessionColors)
+
+  return (
+    <div className={s.section}>
+      <p className={s.sectionTitle}>세션별 색 구분</p>
+      <div className={s.styleOptions}>
+        {SESSION_COLORS_LABELS.map(({ value, name, desc }) => {
+          const isActive = enabled === value
+          return (
+            <button
+              key={String(value)}
+              className={isActive ? s.styleOptionActive : s.styleOption}
+              onClick={() => void setSessionColors(value)}
             >
               <p className={s.styleOptionName}>{name}</p>
               <p className={s.styleOptionDesc}>{desc}</p>
@@ -350,6 +414,14 @@ export function Settings(): JSX.Element {
       <div className={s.divider} />
 
       <CatStyleForm />
+
+      <div className={s.divider} />
+
+      <MultiSessionDisplayForm />
+
+      <div className={s.divider} />
+
+      <SessionColorsForm />
 
       <div className={s.divider} />
 

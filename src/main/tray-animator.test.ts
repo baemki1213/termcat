@@ -9,7 +9,11 @@ vi.mock('electron', () => ({
     })),
   },
 }))
+vi.mock('@main/sprite-tint', () => ({
+  tintImage: vi.fn(() => ({ tinted: true })),
+}))
 
+import { tintImage } from '@main/sprite-tint'
 import { createTrayAnimator } from '@main/tray-animator'
 
 function makeTray(): { tray: Tray; setImage: ReturnType<typeof vi.fn> } {
@@ -40,6 +44,12 @@ describe('createTrayAnimator', () => {
       expect(nativeImage.createFromPath).toHaveBeenCalledTimes(67)
     })
 
+    it('loads 8 frames for runner style', () => {
+      const { tray } = makeTray()
+      createTrayAnimator(tray, '/sprites', 'runner')
+      expect(nativeImage.createFromPath).toHaveBeenCalledTimes(8)
+    })
+
     it('defaults to cat style when style argument omitted', () => {
       const { tray } = makeTray()
       createTrayAnimator(tray, '/sprites')
@@ -58,6 +68,40 @@ describe('createTrayAnimator', () => {
       createTrayAnimator(tray, '/sprites', 'cat2')
       const firstFrame = vi.mocked(nativeImage.createFromPath).mock.results[0].value
       expect(firstFrame.setTemplateImage).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('tint', () => {
+    beforeEach(() => {
+      vi.mocked(tintImage).mockClear()
+    })
+
+    it('does not tint when tint is omitted', () => {
+      const { tray } = makeTray()
+      createTrayAnimator(tray, '/sprites', 'cat')
+      expect(tintImage).not.toHaveBeenCalled()
+    })
+
+    it('fills silhouette styles with the color and skips template marking', () => {
+      const { tray } = makeTray()
+      createTrayAnimator(tray, '/sprites', 'cat', '#FF8C42')
+      expect(tintImage).toHaveBeenCalledTimes(8)
+      expect(tintImage).toHaveBeenCalledWith(expect.anything(), '#FF8C42', 'fill')
+      const firstFrame = vi.mocked(nativeImage.createFromPath).mock.results[0].value
+      expect(firstFrame.setTemplateImage).not.toHaveBeenCalled()
+    })
+
+    it('applies duotone to photo styles', () => {
+      const { tray } = makeTray()
+      createTrayAnimator(tray, '/sprites', 'cat2', '#3FA7FF')
+      expect(tintImage).toHaveBeenCalledWith(expect.anything(), '#3FA7FF', 'duotone')
+    })
+
+    it('paints tinted frames on the tray', () => {
+      const { tray, setImage } = makeTray()
+      const animator = createTrayAnimator(tray, '/sprites', 'cat', '#FF8C42')
+      animator.setLevel('idle')
+      expect(setImage).toHaveBeenCalledWith({ tinted: true })
     })
   })
 

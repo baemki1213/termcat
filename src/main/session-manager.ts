@@ -1,5 +1,11 @@
 import { createSpeedMonitor, type SpeedMonitor } from '@main/speed-monitor'
-import type { SessionSnapshot, SpeedLevel, SpeedThresholds, TokenStats } from '@shared/types'
+import type {
+  SessionLevel,
+  SessionSnapshot,
+  SpeedLevel,
+  SpeedThresholds,
+  TokenStats,
+} from '@shared/types'
 
 interface ActiveSession {
   pid: number
@@ -8,12 +14,6 @@ interface ActiveSession {
   monitor: SpeedMonitor
   lastLevel: SpeedLevel
   tokens: Partial<TokenStats> | null
-}
-
-const LEVEL_RANK: Record<SpeedLevel, number> = { idle: 0, slow: 1, mid: 2, fast: 3 }
-
-function maxLevel(levels: SpeedLevel[]): SpeedLevel {
-  return levels.reduce<SpeedLevel>((max, l) => (LEVEL_RANK[l] > LEVEL_RANK[max] ? l : max), 'idle')
 }
 
 export type SessionManager = ReturnType<typeof createSessionManager>
@@ -43,13 +43,12 @@ export function createSessionManager(getThresholds?: () => SpeedThresholds) {
     onExit(pid: number): void {
       sessions.delete(pid)
     },
-    tick(): SpeedLevel {
-      if (sessions.size === 0) return 'idle'
-      const levels = [...sessions.values()].map((s) => {
+    /** 모든 세션의 속도를 갱신하고, 세션 시작 순서대로 (pid, level) 목록을 돌려준다. */
+    tick(): SessionLevel[] {
+      return [...sessions.values()].map((s) => {
         s.lastLevel = s.monitor.tick()
-        return s.lastLevel
+        return { pid: s.pid, level: s.lastLevel }
       })
-      return maxLevel(levels)
     },
     getSnapshots(): SessionSnapshot[] {
       return [...sessions.values()].map((s) => ({
