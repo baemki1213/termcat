@@ -143,6 +143,12 @@ export const sectionTitle = style({
   margin: 0,
 })
 
+export const sectionHint = style({
+  fontSize: vars.font.size.xs,
+  color: vars.color.text.secondary,
+  margin: 0,
+})
+
 export const sliderRow = style({
   display: 'flex',
   flexDirection: 'column',

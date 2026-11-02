@@ -12,20 +12,36 @@ vi.mock('@main/tray-animator', () => ({
   }),
 }))
 
-import { createMultiTrayManager, SESSION_PALETTE } from '@main/multi-tray-manager'
+import { createMultiTrayManager } from '@main/multi-tray-manager'
 import { createTrayAnimator } from '@main/tray-animator'
+import type { HudEntry } from '@shared/types'
 
-function makeTrayFactory(): {
-  createTray: () => Tray
-  trays: Array<{ destroy: ReturnType<typeof vi.fn> }>
-} {
-  const trays: Array<{ destroy: ReturnType<typeof vi.fn> }> = []
+interface FakeTray {
+  destroy: ReturnType<typeof vi.fn>
+  setTitle: ReturnType<typeof vi.fn>
+  setToolTip: ReturnType<typeof vi.fn>
+}
+
+function makeTrayFactory(): { createTray: () => Tray; trays: FakeTray[] } {
+  const trays: FakeTray[] = []
   const createTray = vi.fn(() => {
-    const tray = { destroy: vi.fn() }
+    const tray: FakeTray = { destroy: vi.fn(), setTitle: vi.fn(), setToolTip: vi.fn() }
     trays.push(tray)
     return tray as unknown as Tray
   })
   return { createTray, trays }
+}
+
+function entry(overrides: Partial<HudEntry>): HudEntry {
+  return {
+    key: 'k',
+    level: 'idle',
+    style: 'cat',
+    tint: null,
+    title: '',
+    tooltip: 'termcat',
+    ...overrides,
+  }
 }
 
 describe('createMultiTrayManager', () => {
@@ -34,263 +50,84 @@ describe('createMultiTrayManager', () => {
     vi.mocked(createTrayAnimator).mockClear()
   })
 
-  it('keeps a single idle tray when there are no sessions', () => {
-    const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([])
-    expect(manager.getTrayCount()).toBe(1)
-    expect(animators[0].setLevel).toHaveBeenLastCalledWith('idle')
-  })
-
-  it('creates one tray per session', () => {
-    const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
+  it('creates one tray per entry with its level, title and tooltip', () => {
+    const { createTray, trays } = makeTrayFactory()
+    const manager = createMultiTrayManager(createTray, '/sprites')
     manager.update([
-      { pid: 1, level: 'slow' },
-      { pid: 2, level: 'fast' },
-      { pid: 3, level: 'idle' },
+      entry({ key: 'a', level: 'slow' }),
+      entry({ key: 'b', level: 'fast', title: 'Explore', tooltip: 'Explore · Explore' }),
     ])
-    expect(manager.getTrayCount()).toBe(3)
-  })
-
-  it('drives each tray with its own session level, in session order', () => {
-    const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([
-      { pid: 1, level: 'slow' },
-      { pid: 2, level: 'fast' },
-    ])
+    expect(manager.getTrayCount()).toBe(2)
     expect(animators[0].setLevel).toHaveBeenLastCalledWith('slow')
     expect(animators[1].setLevel).toHaveBeenLastCalledWith('fast')
+    expect(trays[1].setTitle).toHaveBeenCalledWith('Explore')
+    expect(trays[1].setToolTip).toHaveBeenCalledWith('Explore · Explore')
+  })
+
+  it('passes style and tint to the animator', () => {
+    const { createTray } = makeTrayFactory()
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ style: 'runner', tint: '#FF8C42' })])
+    expect(createTrayAnimator).toHaveBeenCalledWith(
+      expect.anything(),
+      '/sprites',
+      'runner',
+      '#FF8C42'
+    )
   })
 
   it('does not restart the animation when the level is unchanged', () => {
     const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([{ pid: 1, level: 'fast' }])
-    const callsAfterFirst = animators[0].setLevel.mock.calls.length
-    manager.update([{ pid: 1, level: 'fast' }])
-    expect(animators[0].setLevel.mock.calls.length).toBe(callsAfterFirst)
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ level: 'fast' })])
+    manager.update([entry({ level: 'fast' })])
+    expect(animators[0].setLevel).toHaveBeenCalledTimes(1)
   })
 
-  it('removes extra trays when sessions exit, but never below one', () => {
+  it('changes only the level when the look is the same', () => {
+    const { createTray } = makeTrayFactory()
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ level: 'slow' })])
+    manager.update([entry({ level: 'fast' })])
+    expect(animators).toHaveLength(1)
+    expect(animators[0].setLevel).toHaveBeenLastCalledWith('fast')
+  })
+
+  it('rebuilds the animator when the look changes, keeping the tray', () => {
     const { createTray, trays } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([
-      { pid: 1, level: 'fast' },
-      { pid: 2, level: 'mid' },
-    ])
-    manager.update([])
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ level: 'mid', style: 'cat' })])
+    manager.update([entry({ level: 'mid', style: 'cat2', tint: '#000000' })])
+    expect(animators[0].destroy).toHaveBeenCalled()
+    expect(animators[1].setLevel).toHaveBeenLastCalledWith('mid')
+    expect(createTrayAnimator).toHaveBeenLastCalledWith(trays[0], '/sprites', 'cat2', '#000000')
+    expect(trays).toHaveLength(1)
+  })
+
+  it('updates the title only when it changes', () => {
+    const { createTray, trays } = makeTrayFactory()
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ title: 'a' })])
+    manager.update([entry({ title: 'a' })])
+    manager.update([entry({ title: 'b' })])
+    expect(trays[0].setTitle.mock.calls.map((c) => c[0])).toEqual(['a', 'b'])
+  })
+
+  it('removes trailing trays when entries shrink', () => {
+    const { createTray, trays } = makeTrayFactory()
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ key: 'a' }), entry({ key: 'b' }), entry({ key: 'c' })])
+    manager.update([entry({ key: 'a' })])
     expect(manager.getTrayCount()).toBe(1)
     expect(trays[1].destroy).toHaveBeenCalled()
-    expect(trays[0].destroy).not.toHaveBeenCalled()
-    expect(animators[1].destroy).toHaveBeenCalled()
-    expect(animators[0].setLevel).toHaveBeenLastCalledWith('idle')
+    expect(trays[2].destroy).toHaveBeenCalled()
+    expect(animators[2].destroy).toHaveBeenCalled()
   })
 
-  it('rebuilds every animator with the new style and keeps current levels', () => {
-    const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([
-      { pid: 1, level: 'slow' },
-      { pid: 2, level: 'fast' },
-    ])
-    manager.setStyle('cat2')
-    expect(animators[0].destroy).toHaveBeenCalled()
-    expect(animators[1].destroy).toHaveBeenCalled()
-    expect(createTrayAnimator).toHaveBeenLastCalledWith(expect.anything(), '/sprites', 'cat2', null)
-    expect(animators[2].setLevel).toHaveBeenLastCalledWith('slow')
-    expect(animators[3].setLevel).toHaveBeenLastCalledWith('fast')
-  })
-
-  it('uses the new style for trays created after setStyle', () => {
-    const { createTray } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([])
-    manager.setStyle('cat2')
-    manager.update([
-      { pid: 1, level: 'idle' },
-      { pid: 2, level: 'idle' },
-    ])
-    expect(createTrayAnimator).toHaveBeenLastCalledWith(expect.anything(), '/sprites', 'cat2', null)
-  })
-
-  describe('single display mode', () => {
-    it('shows one cat at the fastest session level', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'single',
-        sessionColors: false,
-      })
-      manager.update([
-        { pid: 1, level: 'slow' },
-        { pid: 2, level: 'fast' },
-        { pid: 3, level: 'mid' },
-      ])
-      expect(manager.getTrayCount()).toBe(1)
-      expect(animators[0].setLevel).toHaveBeenLastCalledWith('fast')
-    })
-
-    it('shows an idle cat when no sessions exist', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'single',
-        sessionColors: false,
-      })
-      manager.update([])
-      expect(manager.getTrayCount()).toBe(1)
-      expect(animators[0].setLevel).toHaveBeenLastCalledWith('idle')
-    })
-
-    it('collapses existing trays immediately when switching multi → single', () => {
-      const { createTray, trays } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'multi',
-        sessionColors: false,
-      })
-      manager.update([
-        { pid: 1, level: 'slow' },
-        { pid: 2, level: 'fast' },
-      ])
-      manager.setDisplay('single')
-      expect(manager.getTrayCount()).toBe(1)
-      expect(trays[1].destroy).toHaveBeenCalled()
-      expect(animators[0].setLevel).toHaveBeenLastCalledWith('fast')
-    })
-
-    it('expands back to one tray per session when switching single → multi', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'single',
-        sessionColors: false,
-      })
-      manager.update([
-        { pid: 1, level: 'slow' },
-        { pid: 2, level: 'fast' },
-      ])
-      manager.setDisplay('multi')
-      expect(manager.getTrayCount()).toBe(2)
-      expect(animators[0].setLevel).toHaveBeenLastCalledWith('slow')
-      expect(animators[1].setLevel).toHaveBeenLastCalledWith('fast')
-    })
-  })
-
-  describe('session colors', () => {
-    it('passes no tint when session colors are off', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'multi',
-        sessionColors: false,
-      })
-      manager.update([{ pid: 1, level: 'fast' }])
-      expect(createTrayAnimator).toHaveBeenLastCalledWith(
-        expect.anything(),
-        '/sprites',
-        'cat',
-        null
-      )
-    })
-
-    it('gives each slot the next palette color when session colors are on', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'multi',
-        sessionColors: true,
-      })
-      manager.update([
-        { pid: 1, level: 'fast' },
-        { pid: 2, level: 'slow' },
-      ])
-      const tints = vi.mocked(createTrayAnimator).mock.calls.map((c) => c[3])
-      expect(tints).toEqual([SESSION_PALETTE[0], SESSION_PALETTE[1]])
-    })
-
-    it('wraps around the palette for more slots than colors', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'multi',
-        sessionColors: true,
-      })
-      manager.update(
-        Array.from({ length: SESSION_PALETTE.length + 1 }, (_, i) => ({
-          pid: i,
-          level: 'idle' as const,
-        }))
-      )
-      const tints = vi.mocked(createTrayAnimator).mock.calls.map((c) => c[3])
-      expect(tints[SESSION_PALETTE.length]).toBe(SESSION_PALETTE[0])
-    })
-
-    it('rebuilds animators with tints when toggled on, keeping levels', () => {
-      const { createTray } = makeTrayFactory()
-      const manager = createMultiTrayManager(createTray, '/sprites', {
-        style: 'cat',
-        display: 'multi',
-        sessionColors: false,
-      })
-      manager.update([
-        { pid: 1, level: 'fast' },
-        { pid: 2, level: 'slow' },
-      ])
-      manager.setSessionColors(true)
-      expect(animators[0].destroy).toHaveBeenCalled()
-      expect(animators[1].destroy).toHaveBeenCalled()
-      const tints = vi
-        .mocked(createTrayAnimator)
-        .mock.calls.slice(-2)
-        .map((c) => c[3])
-      expect(tints).toEqual([SESSION_PALETTE[0], SESSION_PALETTE[1]])
-      expect(animators[2].setLevel).toHaveBeenLastCalledWith('fast')
-      expect(animators[3].setLevel).toHaveBeenLastCalledWith('slow')
-    })
-  })
-
-  it('destroys all trays and animators on destroy', () => {
+  it('destroys everything on destroy', () => {
     const { createTray, trays } = makeTrayFactory()
-    const manager = createMultiTrayManager(createTray, '/sprites', {
-      style: 'cat',
-      display: 'multi',
-      sessionColors: false,
-    })
-    manager.update([
-      { pid: 1, level: 'fast' },
-      { pid: 2, level: 'mid' },
-    ])
+    const manager = createMultiTrayManager(createTray, '/sprites')
+    manager.update([entry({ key: 'a' }), entry({ key: 'b' })])
     manager.destroy()
     expect(manager.getTrayCount()).toBe(0)
     expect(trays.every((t) => t.destroy.mock.calls.length === 1)).toBe(true)

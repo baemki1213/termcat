@@ -49,6 +49,11 @@ const sessionColorsAPI = {
   set: (enabled: boolean): Promise<void> => ipcRenderer.invoke('session-colors:set', enabled),
 }
 
+const agentHudAPI = {
+  get: (): Promise<boolean> => ipcRenderer.invoke('agent-hud:get'),
+  set: (enabled: boolean): Promise<void> => ipcRenderer.invoke('agent-hud:set', enabled),
+}
+
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
@@ -59,6 +64,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('catStyle', catStyleAPI)
     contextBridge.exposeInMainWorld('multiSessionDisplay', multiSessionDisplayAPI)
     contextBridge.exposeInMainWorld('sessionColors', sessionColorsAPI)
+    contextBridge.exposeInMainWorld('agentHud', agentHudAPI)
   } catch (error) {
     console.error(error) // eslint-disable-line no-console
   }
@@ -79,4 +85,6 @@ if (process.contextIsolated) {
   window.multiSessionDisplay = multiSessionDisplayAPI
   // @ts-expect-error non-isolated fallback
   window.sessionColors = sessionColorsAPI
+  // @ts-expect-error non-isolated fallback
+  window.agentHud = agentHudAPI
 }

@@ -16,6 +16,8 @@ interface StoreSchema {
   multiSessionDisplay: MultiSessionDisplay
   /** 세션(슬롯)마다 다른 색으로 고양이를 칠할지 */
   sessionColors: boolean
+  /** Claude Code 서브에이전트를 고양이로 보여줄지 */
+  agentHud: boolean
 }
 
 // 신규 설치 시 바로 쓸 수 있도록 기본 단축키를 시딩한다 (command 는 raw — 런처가 termcat 으로 래핑).
@@ -33,5 +35,6 @@ export const store = new ElectronStore<StoreSchema>({
     catStyle: 'cat',
     multiSessionDisplay: 'multi',
     sessionColors: false,
+    agentHud: true,
   },
 })

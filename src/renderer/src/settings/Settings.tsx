@@ -231,6 +231,41 @@ function SessionColorsForm(): JSX.Element {
   )
 }
 
+const AGENT_HUD_LABELS: Array<{ value: boolean; name: string; desc: string }> = [
+  { value: true, name: '켜기', desc: 'Claude Code 서브에이전트마다 역할 색의 고양이 추가' },
+  { value: false, name: '끄기', desc: '터미널 세션 고양이만 표시' },
+]
+
+function AgentHudForm(): JSX.Element {
+  const enabled = useSettingsStore((state) => state.agentHud)
+  const setAgentHud = useSettingsStore((state) => state.setAgentHud)
+
+  return (
+    <div className={s.section}>
+      <p className={s.sectionTitle}>에이전트 HUD</p>
+      <div className={s.styleOptions}>
+        {AGENT_HUD_LABELS.map(({ value, name, desc }) => {
+          const isActive = enabled === value
+          return (
+            <button
+              key={String(value)}
+              className={isActive ? s.styleOptionActive : s.styleOption}
+              onClick={() => void setAgentHud(value)}
+            >
+              <p className={s.styleOptionName}>{name}</p>
+              <p className={s.styleOptionDesc}>{desc}</p>
+            </button>
+          )
+        })}
+      </div>
+      <p className={s.sectionHint}>
+        트레이 메뉴의 &quot;Claude Code 훅 설치&quot; 또는 <code>termcat hooks install</code> 이
+        필요합니다.
+      </p>
+    </div>
+  )
+}
+
 function ThresholdsForm(): JSX.Element {
   const thresholds = useSettingsStore((state) => state.thresholds)
   const setThresholds = useSettingsStore((state) => state.setThresholds)
@@ -422,6 +457,10 @@ export function Settings(): JSX.Element {
       <div className={s.divider} />
 
       <SessionColorsForm />
+
+      <div className={s.divider} />
+
+      <AgentHudForm />
 
       <div className={s.divider} />
 

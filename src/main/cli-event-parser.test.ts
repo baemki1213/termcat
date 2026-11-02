@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseCliEvent } from '@main/ipc-server'
+import { parseCliEvent } from '@main/cli-event-parser'
 
 describe('parseCliEvent', () => {
   describe('session:start', () => {
@@ -38,6 +38,58 @@ describe('parseCliEvent', () => {
     it('parses non-zero exit codes', () => {
       const result = parseCliEvent({ type: 'session:exit', pid: 123, code: 1 })
       expect(result).toEqual({ type: 'session:exit', pid: 123, code: 1 })
+    })
+  })
+
+  describe('agent events', () => {
+    it('parses agent:start', () => {
+      const raw = { type: 'agent:start', sessionId: 's', agentId: 'a', agentType: 'Explore' }
+      expect(parseCliEvent(raw)).toEqual(raw)
+    })
+
+    it('parses agent:intent', () => {
+      const raw = { type: 'agent:intent', sessionId: 's', agentType: 'Plan', description: 'd' }
+      expect(parseCliEvent(raw)).toEqual(raw)
+    })
+
+    it('parses agent:activity and drops unknown fields', () => {
+      const raw = {
+        type: 'agent:activity',
+        sessionId: 's',
+        agentId: 'a',
+        toolName: 'Read',
+        timestamp: 5,
+        extra: true,
+      }
+      expect(parseCliEvent(raw)).toEqual({
+        type: 'agent:activity',
+        sessionId: 's',
+        agentId: 'a',
+        toolName: 'Read',
+        timestamp: 5,
+      })
+    })
+
+    it('parses agent:stop and agent:session-end', () => {
+      expect(parseCliEvent({ type: 'agent:stop', sessionId: 's', agentId: 'a' })).toEqual({
+        type: 'agent:stop',
+        sessionId: 's',
+        agentId: 'a',
+      })
+      expect(parseCliEvent({ type: 'agent:session-end', sessionId: 's' })).toEqual({
+        type: 'agent:session-end',
+        sessionId: 's',
+      })
+    })
+
+    it('throws when sessionId is missing', () => {
+      expect(() => parseCliEvent({ type: 'agent:start', agentId: 'a', agentType: 'x' })).toThrow()
+    })
+  })
+
+  describe('status:get', () => {
+    it('parses a status request', () => {
+      expect(parseCliEvent({ type: 'status:get' })).toEqual({ type: 'status:get' })
     })
   })
 

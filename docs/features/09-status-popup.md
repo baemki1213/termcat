@@ -83,4 +83,5 @@ function calculatePosition(trayBounds, winBounds) {
 | 파일 | 설명 |
 |------|------|
 | `src/main/popup-window.ts` | 팝업 윈도우 생성 및 위치 계산 |
-| `src/renderer/src/Popup.tsx` | 팝업 UI 컴포넌트 |
+| `src/renderer/src/popup/Popup.tsx` | 팝업 UI 컴포넌트 |
+| `src/renderer/src/popup/AgentCard.tsx` | 서브에이전트 카드 (이름·역할 색 점·호출 빈도) — [기능 13](./13-agent-hud.md) |

@@ -16,6 +16,7 @@
 | `catStyle` | `'cat' \| 'cat2' \| 'runner'` | `'cat'` | 고양이 스프라이트 스타일 |
 | `multiSessionDisplay` | `'multi' \| 'single'` | `'multi'` | 여러 세션일 때 고양이를 세션마다 / 한 마리로 표시 |
 | `sessionColors` | boolean | false | 세션(슬롯)마다 다른 색으로 고양이 칠하기 |
+| `agentHud` | boolean | true | Claude Code 서브에이전트를 역할별 고양이로 표시 ([기능 13](./13-agent-hud.md)) |
 | `openAtLogin` | boolean | true | 로그인 시 자동 시작 |
 | `onboardingDone` | boolean | false | 온보딩 완료 여부 |
 
@@ -51,6 +52,7 @@ const store = new Store<AppSettings>({
 | 고양이 스타일 | 버튼 그룹 (픽셀 / 타이핑 / 달리기) |
 | 여러 세션 표시 | 버튼 그룹 (세션마다 한 마리 / 한 마리로 합치기) |
 | 세션별 색 구분 | 버튼 그룹 (끄기 / 켜기) |
+| 에이전트 HUD | 버튼 그룹 (켜기 / 끄기) + 훅 설치 안내 |
 
 ---
 

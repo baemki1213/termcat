@@ -107,6 +107,34 @@ export const contextBarFill = style({
   transition: 'width 0.3s ease',
 })
 
+export const listHeading = style({
+  fontSize: vars.font.size.xs,
+  fontWeight: vars.font.weight.semibold,
+  color: vars.color.text.muted,
+  margin: 0,
+  padding: `${vars.space['2']} ${vars.space['4']} 0`,
+})
+
+export const agentHeader = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: vars.space['2'],
+})
+
+export const agentDot = style({
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  flexShrink: 0,
+  marginBottom: vars.space['1'],
+})
+
+export const agentRole = style({
+  fontSize: vars.font.size.xs,
+  color: vars.color.text.secondary,
+  fontFamily: 'monospace',
+})
+
 export const emptyState = style({
   flex: 1,
   display: 'flex',

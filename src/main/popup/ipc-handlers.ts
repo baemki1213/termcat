@@ -1,10 +1,10 @@
 import { app, ipcMain } from 'electron'
 
-import type { SessionManager } from '@main/session-manager'
+import type { StatusReport } from '@shared/types'
 
-export function registerPopupIpcHandlers(sessionManager: SessionManager): void {
+export function registerPopupIpcHandlers(getStatus: () => StatusReport): void {
   ipcMain.handle('popup:get-sessions', () => ({
-    sessions: sessionManager.getSnapshots(),
+    ...getStatus(),
     openAtLogin: app.getLoginItemSettings().openAtLogin,
   }))
 

@@ -42,5 +42,9 @@ declare global {
       get: () => Promise<boolean>
       set: (enabled: boolean) => Promise<void>
     }
+    agentHud: {
+      get: () => Promise<boolean>
+      set: (enabled: boolean) => Promise<void>
+    }
   }
 }

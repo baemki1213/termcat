@@ -27,6 +27,7 @@ function noopCallbacks(): SettingsChangeCallbacks {
     onCatStyleChange: vi.fn(),
     onMultiSessionDisplayChange: vi.fn(),
     onSessionColorsChange: vi.fn(),
+    onAgentHudChange: vi.fn(),
   }
 }
 
@@ -42,7 +43,7 @@ describe('registerSettingsIpcHandlers', () => {
   })
 
   describe('channel registration', () => {
-    it('registers all 12 settings channels exactly once', () => {
+    it('registers all 14 settings channels exactly once', () => {
       registerSettingsIpcHandlers(noopCallbacks())
       const channels = vi.mocked(ipcMain.handle).mock.calls.map((c) => c[0])
       expect(channels.sort()).toEqual(
@@ -59,6 +60,8 @@ describe('registerSettingsIpcHandlers', () => {
           'multi-session-display:set',
           'session-colors:get',
           'session-colors:set',
+          'agent-hud:get',
+          'agent-hud:set',
         ].sort()
       )
     })
@@ -215,6 +218,23 @@ describe('registerSettingsIpcHandlers', () => {
       getHandler('session-colors:set')(null, true)
       expect(storeMock.set).toHaveBeenCalledWith('sessionColors', true)
       expect(onChange).toHaveBeenCalledWith(true)
+    })
+  })
+
+  describe('agent-hud', () => {
+    it('agent-hud:get returns the persisted flag', () => {
+      storeMock.get.mockReturnValue(false)
+      registerSettingsIpcHandlers(noopCallbacks())
+      expect(getHandler('agent-hud:get')(null)).toBe(false)
+      expect(storeMock.get).toHaveBeenCalledWith('agentHud')
+    })
+
+    it('agent-hud:set persists the flag and notifies the callback', () => {
+      const onChange = vi.fn()
+      registerSettingsIpcHandlers({ ...noopCallbacks(), onAgentHudChange: onChange })
+      getHandler('agent-hud:set')(null, false)
+      expect(storeMock.set).toHaveBeenCalledWith('agentHud', false)
+      expect(onChange).toHaveBeenCalledWith(false)
     })
   })
 

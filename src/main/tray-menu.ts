@@ -1,12 +1,28 @@
 import { is } from '@electron-toolkit/utils'
 import { app, Menu } from 'electron'
 
+import {
+  areClaudeHooksInstalled,
+  buildHookCommand,
+  installClaudeHooks,
+  uninstallClaudeHooks,
+} from '@cli/claude-hooks'
+import { getCliEntryPath } from '@main/cli-path'
 import { openOnboardingWindow } from '@main/onboarding'
 import { launchAi, openSettingsWindow } from '@main/settings'
 import { store } from '@main/store'
 
 export function rebuildTrayMenu(): void {
   // no-op: menu is now built fresh on each right-click via getContextMenu()
+}
+
+/** Claude Code 서브에이전트 HUD 용 훅을 ~/.claude/settings.json 에 넣거나 뺀다. */
+function toggleClaudeHooks(install: boolean): void {
+  if (install) {
+    installClaudeHooks(buildHookCommand(process.execPath, getCliEntryPath()))
+  } else {
+    uninstallClaudeHooks()
+  }
 }
 
 export function getContextMenu(): Menu {
@@ -52,6 +68,12 @@ export function getContextMenu(): Menu {
       click: (menuItem) => {
         app.setLoginItemSettings({ openAtLogin: menuItem.checked, openAsHidden: true })
       },
+    },
+    {
+      label: 'Claude Code 에이전트 HUD 훅 설치',
+      type: 'checkbox',
+      checked: areClaudeHooksInstalled(),
+      click: (menuItem) => toggleClaudeHooks(menuItem.checked),
     },
     { type: 'separator' },
     { label: 'Quit', role: 'quit' },

@@ -43,7 +43,7 @@ src/
   preload/     contextBridge 보안 브리지
   renderer/    React UI (팝업, 온보딩, 설정 창)
   cli/         node-pty 래퍼 CLI (별도 번들)
-  shared/      프로세스 공통 타입 (types.ts)
+  shared/      프로세스 공통 타입 (types.ts), 역할→외모 매핑 (agent-look.ts)
 docs/
   features/    기능별 명세
   conventions/ 코딩 컨벤션

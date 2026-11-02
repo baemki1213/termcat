@@ -18,6 +18,7 @@ interface SettingsState {
   catStyle: CatStyle
   multiSessionDisplay: MultiSessionDisplay
   sessionColors: boolean
+  agentHud: boolean
   thresholds: SpeedThresholds
   loaded: boolean
 
@@ -26,6 +27,7 @@ interface SettingsState {
   setCatStyle: (style: CatStyle) => Promise<void>
   setMultiSessionDisplay: (display: MultiSessionDisplay) => Promise<void>
   setSessionColors: (enabled: boolean) => Promise<void>
+  setAgentHud: (enabled: boolean) => Promise<void>
   /** 상태는 즉시 반영하고 IPC 저장만 debounce 한다 (슬라이더 연속 조작 대비). */
   setThresholds: (next: SpeedThresholds) => void
   saveShortcut: (shortcut: AIShortcut) => Promise<void>
@@ -39,20 +41,30 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   catStyle: 'cat',
   multiSessionDisplay: 'multi',
   sessionColors: false,
+  agentHud: true,
   thresholds: DEFAULT_SPEED_THRESHOLDS,
   loaded: false,
 
   load: async () => {
     try {
-      const [shortcuts, catStyle, multiSessionDisplay, sessionColors, thresholds] =
+      const [shortcuts, catStyle, multiSessionDisplay, sessionColors, agentHud, thresholds] =
         await Promise.all([
           window.aiShortcut.list(),
           window.catStyle.get(),
           window.multiSessionDisplay.get(),
           window.sessionColors.get(),
+          window.agentHud.get(),
           window.thresholds.get(),
         ])
-      set({ shortcuts, catStyle, multiSessionDisplay, sessionColors, thresholds, loaded: true })
+      set({
+        shortcuts,
+        catStyle,
+        multiSessionDisplay,
+        sessionColors,
+        agentHud,
+        thresholds,
+        loaded: true,
+      })
     } catch (err) {
       log.error('failed to load settings', err)
     }
@@ -82,6 +94,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       await window.sessionColors.set(enabled)
     } catch (err) {
       log.error('failed to save session colors', err)
+    }
+  },
+
+  setAgentHud: async (enabled) => {
+    set({ agentHud: enabled })
+    try {
+      await window.agentHud.set(enabled)
+    } catch (err) {
+      log.error('failed to save agent hud', err)
     }
   },
 

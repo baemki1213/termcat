@@ -78,6 +78,7 @@ termcat PTY 래퍼  ──▶  AI CLI (claude / chatgpt / gemini ...)
 - [ ] 속도 단계 임계값 커스터마이즈
 - [ ] 여러 고양이 색상 변경
 - [ ] 트레이 클릭 시 세션 상태 요약 팝업 (현재 속도, 세션 지속 시간 등)
+- [ ] Claude Code 서브에이전트 HUD — 훅으로 서브에이전트마다 역할별 색·이름의 고양이 표시, `termcat status` 로 에이전트도 현황 조회 (`termcat hooks install`)
 
 ### 🟢 Could (시간 나면)
 

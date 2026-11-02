@@ -10,6 +10,7 @@ export interface SettingsChangeCallbacks {
   onCatStyleChange: (style: CatStyle) => void
   onMultiSessionDisplayChange: (display: MultiSessionDisplay) => void
   onSessionColorsChange: (enabled: boolean) => void
+  onAgentHudChange: (enabled: boolean) => void
 }
 
 export function registerSettingsIpcHandlers(callbacks: SettingsChangeCallbacks): void {
@@ -64,5 +65,12 @@ export function registerSettingsIpcHandlers(callbacks: SettingsChangeCallbacks):
   ipcMain.handle('session-colors:set', (_, enabled: boolean) => {
     store.set('sessionColors', enabled)
     callbacks.onSessionColorsChange(enabled)
+  })
+
+  ipcMain.handle('agent-hud:get', () => store.get('agentHud'))
+
+  ipcMain.handle('agent-hud:set', (_, enabled: boolean) => {
+    store.set('agentHud', enabled)
+    callbacks.onAgentHudChange(enabled)
   })
 }

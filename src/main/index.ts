@@ -2,6 +2,9 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { app, nativeImage, Tray } from 'electron'
 import { join } from 'path'
 
+import { createAgentRegistry } from '@main/agent-registry'
+import { isAgentEvent } from '@main/cli-event-parser'
+import { createHudComposer } from '@main/hud-composer'
 import { createIpcServer } from '@main/ipc-server'
 import { createMultiTrayManager } from '@main/multi-tray-manager'
 import { hasAlias, openOnboardingWindow } from '@main/onboarding'
@@ -11,7 +14,7 @@ import { createSessionManager } from '@main/session-manager'
 import { registerSettingsIpcHandlers } from '@main/settings'
 import { store } from '@main/store'
 import { getContextMenu } from '@main/tray-menu'
-import type { CatStyle, MultiSessionDisplay } from '@shared/types'
+import type { CatStyle, CliEvent, MultiSessionDisplay, StatusReport } from '@shared/types'
 
 const TICK_MS = 100
 
@@ -38,18 +41,26 @@ interface Core {
   setStyle: (style: CatStyle) => void
   setDisplay: (display: MultiSessionDisplay) => void
   setSessionColors: (enabled: boolean) => void
+  setAgentHud: (enabled: boolean) => void
 }
 
 function startCore(): Core {
   const sessionManager = createSessionManager(() => store.get('thresholds'))
-  const trayManager = createMultiTrayManager(createTray, getSpritesDir(), {
+  const agentRegistry = createAgentRegistry()
+  const hud = createHudComposer({
     style: store.get('catStyle'),
     display: store.get('multiSessionDisplay'),
     sessionColors: store.get('sessionColors'),
+    agentHud: store.get('agentHud'),
   })
-  trayManager.update([])
+  const trayManager = createMultiTrayManager(createTray, getSpritesDir())
+  let lastAgents = agentRegistry.tick()
 
-  const ipcServer = createIpcServer((event) => {
+  function getStatus(): StatusReport {
+    return { sessions: sessionManager.getSnapshots(), agents: lastAgents }
+  }
+
+  function onEvent(event: CliEvent): void {
     if (event.type === 'session:start') {
       sessionManager.onStart(event.pid, event.command)
     } else if (event.type === 'session:data') {
@@ -58,14 +69,19 @@ function startCore(): Core {
       sessionManager.onStats(event.pid, event.tokens)
     } else if (event.type === 'session:exit') {
       sessionManager.onExit(event.pid)
+    } else if (isAgentEvent(event)) {
+      agentRegistry.handle(event)
     }
-  })
+  }
 
-  registerPopupIpcHandlers(sessionManager)
+  trayManager.update(hud.compose([], lastAgents))
+  const ipcServer = createIpcServer({ onEvent, getStatus })
+  registerPopupIpcHandlers(getStatus)
   ipcServer.start()
 
   const tickerId = setInterval(() => {
-    trayManager.update(sessionManager.tick())
+    lastAgents = agentRegistry.tick()
+    trayManager.update(hud.compose(sessionManager.tick(), lastAgents))
   }, TICK_MS)
 
   return {
@@ -74,9 +90,10 @@ function startCore(): Core {
       ipcServer.stop()
       trayManager.destroy()
     },
-    setStyle: (style: CatStyle) => trayManager.setStyle(style),
-    setDisplay: (display: MultiSessionDisplay) => trayManager.setDisplay(display),
-    setSessionColors: (enabled: boolean) => trayManager.setSessionColors(enabled),
+    setStyle: hud.setStyle,
+    setDisplay: hud.setDisplay,
+    setSessionColors: hud.setSessionColors,
+    setAgentHud: hud.setAgentHud,
   }
 }
 
@@ -91,12 +108,13 @@ app.whenReady().then(() => {
     app.dock.hide()
   }
 
-  const { stop, setStyle, setDisplay, setSessionColors } = startCore()
+  const { stop, setStyle, setDisplay, setSessionColors, setAgentHud } = startCore()
 
   registerSettingsIpcHandlers({
     onCatStyleChange: setStyle,
     onMultiSessionDisplayChange: setDisplay,
     onSessionColorsChange: setSessionColors,
+    onAgentHudChange: setAgentHud,
   })
 
   app.on('before-quit', stop)

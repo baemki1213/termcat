@@ -67,6 +67,25 @@ export function createIpcClient() {
         process.exit(exitCode)
       }
     },
+    /** 이벤트를 보내고 데몬이 끊을 때까지 받은 첫 줄(JSON)을 돌려준다. `status:get` 용. */
+    request(event: CliEvent): Promise<string> {
+      return new Promise((resolve, reject) => {
+        if (!connected || !socket) {
+          reject(new Error('not connected'))
+          return
+        }
+        let buffer = ''
+        socket.on('data', (chunk) => {
+          buffer += chunk.toString()
+        })
+        socket.on('close', () => {
+          const [line] = buffer.split('\n')
+          if (line) resolve(line)
+          else reject(new Error('empty response'))
+        })
+        socket.write(JSON.stringify(event) + '\n')
+      })
+    },
     disconnect(): void {
       socket?.destroy()
       socket = null

@@ -1,38 +1,17 @@
 import { useEffect, useState } from 'react'
 
 import { createLogger } from '@renderer/logger'
-import type { PopupState, SessionSnapshot, SpeedLevel } from '@shared/types'
+import type { PopupState, SessionSnapshot } from '@shared/types'
 
+import { AgentCard } from './AgentCard'
+import { formatDuration, formatTokens, SPEED_COLORS, SPEED_LABEL } from './format'
 import * as s from './Popup.css'
 
 const log = createLogger('popup')
 
 const POLL_MS = 500
 
-const SPEED_LABEL: Record<SpeedLevel, string> = {
-  idle: '⚫ idle',
-  slow: '🔵 slow',
-  mid: '🟡 mid',
-  fast: '🔴 fast',
-}
-
-const SPEED_COLORS: Record<SpeedLevel, { bg: string; fg: string }> = {
-  idle: { bg: '#e5e7eb', fg: '#6b7280' },
-  slow: { bg: '#dbeafe', fg: '#2563eb' },
-  mid: { bg: '#fef3c7', fg: '#d97706' },
-  fast: { bg: '#fee2e2', fg: '#dc2626' },
-}
-
-function formatDuration(startedAt: number): string {
-  const secs = Math.floor((Date.now() - startedAt) / 1000)
-  const m = Math.floor(secs / 60)
-  const sec = secs % 60
-  return m > 0 ? `${m}분 ${sec}초` : `${sec}초`
-}
-
-function formatTokens(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-}
+const EMPTY_STATE: PopupState = { sessions: [], agents: [], openAtLogin: false }
 
 function SessionCard({ session }: { session: SessionSnapshot }): JSX.Element {
   const colors = SPEED_COLORS[session.speedLevel]
@@ -100,7 +79,7 @@ function SessionCard({ session }: { session: SessionSnapshot }): JSX.Element {
 }
 
 export function Popup(): JSX.Element {
-  const [state, setState] = useState<PopupState>({ sessions: [], openAtLogin: false })
+  const [state, setState] = useState<PopupState>(EMPTY_STATE)
 
   useEffect(() => {
     function poll(): void {
@@ -121,7 +100,7 @@ export function Popup(): JSX.Element {
         <p className={s.appName}>termcat</p>
       </div>
 
-      {state.sessions.length === 0 ? (
+      {state.sessions.length === 0 && state.agents.length === 0 ? (
         <div className={s.emptyState}>
           <p className={s.emptyText}>실행 중인 세션이 없어요</p>
         </div>
@@ -129,6 +108,10 @@ export function Popup(): JSX.Element {
         <div className={s.sessionList}>
           {state.sessions.map((session) => (
             <SessionCard key={session.pid} session={session} />
+          ))}
+          {state.agents.length > 0 && <p className={s.listHeading}>에이전트</p>}
+          {state.agents.map((agent) => (
+            <AgentCard key={agent.key} agent={agent} />
           ))}
         </div>
       )}

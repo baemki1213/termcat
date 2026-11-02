@@ -27,6 +27,7 @@ AI 터미널 세션을 감지하여 시스템 트레이에 고양이 애니메�
 | 10 | [설정 커스터마이즈](./features/10-settings.md) | 속도 임계값, 고양이 색상 등 | ✅ |
 | 11 | 앱 아이콘 | DMG / 앱 번들 아이콘 (`resources/icon.icns`) | ✅ |
 | 12 | AI 런처 숏컷 | 트레이 메뉴에서 AI 명령어 바로 실행, 설정 창에서 커스텀 숏컷 CRUD | ✅ |
+| 13 | [서브에이전트 HUD](./features/13-agent-hud.md) | Claude Code 훅으로 서브에이전트마다 역할별 고양이 표시, `termcat status` | ✅ |
 
 ---
 
@@ -44,10 +45,13 @@ termcat PTY 래퍼 (Node.js CLI)   ──▶  AI CLI (claude / chatgpt / gemini 
 SpeedMonitor (chars/sec 측정)
     │
     ▼
-IPC → Electron main process
+IPC → Electron main process  ◀── termcat hook (Claude Code 서브에이전트 훅)
     │
     ▼
-TrayAnimator (고양이 아이콘 교체)
+HudComposer (세션 + 에이전트 → 고양이 목록)
+    │
+    ▼
+MultiTrayManager / TrayAnimator (고양이 아이콘 교체)
 ```
 
 ## 컨벤션 문서
