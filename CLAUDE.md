@@ -17,6 +17,9 @@ npm run build         # 프로덕션 빌드
 npm run build:mac     # .dmg 패키지 빌드
 ```
 
+> macOS 26 이상에서는 Electron 공식 바이너리가 Gatekeeper에 막혀 즉시 종료된다(exit 137, "휴지통으로 이동" 경고).
+> `npm install`의 postinstall이 `scripts/sign-electron.sh`로 ad-hoc 재서명해 해결한다. 경고가 다시 뜨면 `sh scripts/sign-electron.sh`를 직접 실행한다.
+
 ---
 
 ## 문서

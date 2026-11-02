@@ -22,7 +22,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "build:mac": "electron-vite build && electron-builder --mac",
     "dist": "npm run build && electron-builder --mac",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild && sh scripts/sign-electron.sh"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
